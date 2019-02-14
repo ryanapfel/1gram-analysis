@@ -1,0 +1,147 @@
+---
+title: "Other Languages"
+output: html_notebook
+---
+```{r}
+
+rm(list = ls())
+
+setwd("C:/Users/rasap/Documents/R Projects/Project 1")
+
+install.packages("tidyverse", dep = TRUE)
+library(tidyverse)
+```
+
+```{r}
+
+getdata1 = function(lang) {
+    #read in files
+    docName = lang
+    
+    one = read_tsv(
+    docName,
+    col_names = c("Word","Year","Freq","VolumeFrequenc"),
+    n_max = Inf,
+    progress = show_progress(),
+    skip_empty_rows = TRUE
+    )
+    
+    return(one)
+    
+}
+
+
+    
+getdata2 = function(lang_tc)
+{
+    totalCountDoc = lang_tc
+    totalCount = read_delim(totalCountDoc,
+                        delim = '\t',
+                     col_names = FALSE,
+                      progress = show_progress(),
+                     skip_empty_rows = TRUE)
+    totalCount = data.frame(t(totalCount))
+    colnames(totalCount) <- "x"
+    mutate_c = totalCount
+    listof = as.character(mutate_c$x)
+    mutatedVers = listof[-c(1, 427)]; # without 2nd and 3rd
+    
+    date = lapply(mutatedVers, function(x) substr(x,1,5))
+    date = unlist(date, recursive = FALSE)
+    date = str_replace_all(date, "[[:punct:]]", "")
+    dateFinal = lapply(date, function(x) substr(x,1,4))
+    dateFinal = unlist(dateFinal, recursive = FALSE)
+    
+    tc = lapply(mutatedVers, function(x) str_sub(x,5,-1))
+    tc = unlist(tc, recursive = FALSE)
+    tc_df = data.frame("year"= dateFinal, "count" = tc) %>%
+    mutate(count = as.numeric(as.character(count)),
+         year = as.numeric(as.character(year))
+         )
+    return(tc_df)
+    
+}
+
+getHalfLife <- function(d1,d2)
+{
+  one = getdata1(d1)
+  tc_df = getdata(d2)
+    
+    
+  dfOfWord = filter(one, Word == what_year, Year >= 1875 & Year <=1975 ) %>%
+  mutate("rFreq" = Freq / filter(tc_df, year == what_year)$count) %>% 
+  arrange(rFreq)
+  
+  topRow = dfOfWord %>%
+    filter(row_number() == 1)
+  highestYear = topRow$Year
+  print(highestYear)
+  highestFreq = as.numeric(topRow$rFreq)
+  
+  half = highestFreq / 2
+  
+  print(highestYear)
+  
+  absoluteDistance = abs(highestFreq - half)
+  
+  halfdf = dfOfWord %>%
+    filter(Year > highestYear) %>% #can't be a year less than
+    mutate(abs_dif = absoluteDistance - abs(as.numeric(rFreq) - highestFreq)) %>%
+    arrange(desc(abs_dif)) %>%
+    select(row_number() == 1)
+    
+
+  
+  halfdf
+  
+  
+  rm(one,tc_df)
+  
+}
+
+
+
+```
+
+
+```{r}
+
+#Chinese
+getHalfLife("g_chi.gz","g_chi_tc.txt")
+```
+
+```{r}
+
+#French
+getHalfLife("g_fren.gz","g_fren_tc.txt")
+```
+
+```{r}
+
+#German
+getHalfLife("g_ger.gz","g_ger_tc.txt")
+```
+
+```{r}
+#Hebrew
+getHalfLife("g_heb.gz","g_heb_tc.txt")
+```
+
+```{r}
+
+#Italian
+getHalfLife("g_ita.gz","g_ita_tc.txt")
+```
+
+```{r}
+
+#Rusian
+getHalfLife("g_rus.gz","g_rus_tc.txt")
+```
+
+```{r}
+
+#Spanish
+getHalfLife("g_span.gz","g_span_tc.txt")
+
+```

@@ -2,3 +2,29 @@
 title: "Project 1 Psych"
 output: html_notebook
 ---
+
+From the book "Bit by Bit" question 2.6 is an activity aimed at recreating certain graphs from a 2011 study where Michel and Colleagues analyzed 1-gram data. 
+
+In their study, they built and used an API that allowed them to specifically analyze different words
+
+The instalation of the api for R is provided here:
+```{r}
+require(devtools)
+install_github("ngramr", "seancarmody")
+require(ngramr)
+```
+Next, we require the use of ggplot2, our plotting tool
+```{r}
+require(ggplot2)
+```
+Question 2b)
+
+"Recreate the main part of figure3a"
+
+First we will create a collection of frequency data
+```{r}
+date = ngram(c("1883","1910","1950"),year_start = 1850)
+date
+ggplot(date, aes(x=Year, y=Frequency, colour=Phrase)) + geom_line()
+
+```

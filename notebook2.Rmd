@@ -1,0 +1,260 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+
+rm(list = ls())
+
+```
+
+```{r}
+
+setwd("C:/Users/rasap/Documents/R Projects/Project 1")
+
+library(tidyverse)
+```
+
+
+
+For this first read in of the n-grams containing one I used read_tsv. Took about 20 minutes on my High-Ram box.
+```{r}
+docName = "one.gz"
+
+one = read_tsv(
+  docName,
+  col_names = c("Word","Year","Freq","VolumeFrequenc"),
+  skip = 1000,
+  n_max = Inf,
+  progress = show_progress(),
+  skip_empty_rows = TRUE
+)
+
+```
+
+
+We get the three rows here for 1983, 1910, 1950
+
+```{r}
+eightThree = filter(one, Word == "1883", Year >= 1850) %>%
+  arrange(desc(Year))
+
+nineTen = filter(one, Word == "1910", Year >= 1850) %>%
+  arrange(desc(Year))
+
+fifty = filter(one, Word == "1950", Year >= 1850) %>%
+  arrange(desc(Year))
+```
+
+
+The file's form was unclear so I continue to just read it all in
+```{r}
+
+
+totalCount = read_delim("totalCounts.txt",
+                        delim = '\t',
+                     col_names = FALSE,
+                      progress = show_progress(),
+                     skip_empty_rows = TRUE)
+totalCount = data.frame(t(totalCount))
+
+```
+
+Let's switch the axis of the df
+```{r}
+colnames(totalCount) <- "x"
+
+mutate_c = totalCount
+
+listof = as.character(mutate_c$x)
+
+mutatedVers = listof[-c(1, 427)]; # without 2nd and 3rd
+
+
+date = lapply(mutatedVers, function(x) substr(x,1,5))
+
+date = unlist(date, recursive = FALSE)
+
+date = str_replace_all(date, "[[:punct:]]", "")
+
+dateFinal = lapply(date, function(x) substr(x,1,4))
+dateFinal = unlist(dateFinal, recursive = FALSE)
+
+tc = lapply(mutatedVers, function(x) str_sub(x,5,-1))
+tc = unlist(tc, recursive = FALSE)
+tc_df = data.frame("year"= dateFinal, "count" = tc) %>%
+  mutate(count = as.numeric(as.character(count)),
+         year = as.numeric(as.character(year))
+         )
+tc_df
+  
+```
+
+
+
+
+
+
+
+
+Let's mutate the values of the respective years now to contain relative frequency
+```{r}
+
+eightThree = eightThree %>%
+  mutate("Relative Frequency" = Freq / filter(tc_df, year == "1883")$count)
+
+
+nineTen = nineTen %>%
+  mutate("Relative Frequency" = Freq / filter(tc_df, year == "1910")$count)
+
+fifty = fifty %>%
+  mutate("Relative Frequency" = Freq / filter(tc_df, year == "1950")$count)
+
+graphMe = union(eightThree,union(nineTen,fifty))
+graphMe %>%
+  arrange(Word)
+  
+```
+Final Graph Part B:
+```{r}
+ggplot(graphMe, aes(x=Year, y=`Relative Frequency`, colour=Word)) + geom_line()
+
+```
+
+
+Final Graph Part C:
+```{r}
+ggplot(graphMe, aes(x=Year, y=Freq, colour=Word)) + geom_line()
+```
+
+
+```{r}
+getRfreq = function(whatYear)
+{
+  
+
+  currentIndex = length(tc_df$year) - (tc_df$year[length(tc_df$year)] - whatYear)
+  
+  
+  divsor = tc_df$count[currentIndex]
+  
+  whatYear = as.character(whatYear)
+
+    
+  
+  df = filter(one, Word == whatYear, Year >= 1875 & Year <=1975) %>%
+    mutate(rFreq = Freq /divsor )%>% 
+    arrange(desc(rFreq))
+  
+  return(df)
+  
+}
+
+```
+
+
+```{r}
+
+
+
+
+getHalfLife <- function(what_year)
+{
+  df = getRfreq(what_year)
+  
+  
+
+  topRow = df %>%
+    filter(row_number() == 1)
+
+  highestYear = topRow$Year
+  highestFreq = topRow$rFreq
+  
+  half = highestFreq / 2
+  
+
+  halfdf = df %>%
+    filter(Year > highestYear) %>% #can't be a year less than
+    mutate(abs_dif = half - abs(rFreq - highestFreq)) %>%
+    arrange(abs_dif) %>%
+    filter(row_number() == 1)
+  
+  halfLifeYear = halfdf$Year
+  
+  
+  return(halfLifeYear - highestYear)
+  
+}
+
+
+
+```
+
+
+
+```{r}
+
+  finalDf = tc_df %>% 
+     filter(year >= 1875 & year <= 1975)%>%
+      mutate(halfLife = year)
+
+k = lapply(finalDf$halfLife, function(x) getHalfLife(x)) 
+
+   
+  
+
+```
+
+```{r}
+
+
+getHalfLife = function(dates, oneOne, tc_df_df)
+{
+  one = oneOne
+  tc_df = tc_df_df
+  
+  output = c("double", ncol(dates))
+  for (i in seq_along(dates))
+  {
+    df_one = one %>% 
+      filter(Word == as.character(dates[[i]]), Year >= 1875 & Year <= 1875) %>%
+      mutate(rFreq = Freq / filter(tc_df, year == dates[[i]])$count) %>% 
+      arrange(desc(rFreq))
+
+    topYear = df_one %>%
+      filter(row_number() == 1)
+    
+    highestYear = topYear$Year
+    highestFreq = as.numeric(topYear$rFreq)
+    
+    half = highestFreq / 2
+  
+
+    absoluteDistance = abs(highestFreq - half)
+    
+    halfdf = df_one %>%
+      filter(Year > highestYear) %>% #can't be a year less than
+      mutate(abs_dif = absoluteDistance - abs(as.numeric(rFreq) - highestFreq)) %>%
+      arrange(abs_dif) %>%
+      filter(row_number() == 1)
+  
+    halfLifeYear = halfdf$Year
+    
+    output[[i]] = halfLifeYear - highestYear
+
+  }
+  
+  return(output)
+  
+  
+  
+}
+
+dates = c(1875:1975)
+
+getHalfLife(dates,one,tc_df)
+
+
+
+
+```
